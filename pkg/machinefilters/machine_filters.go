@@ -17,6 +17,9 @@ limitations under the License.
 package machinefilters
 
 import (
+	"encoding/json"
+	"reflect"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -253,6 +256,42 @@ func MatchesKubernetesVersion(kubernetesVersion string) Func {
 // MatchesKThreesBootstrapConfig checks if machine's KThreesConfigSpec is equivalent with KCP's KThreesConfigSpec.
 func MatchesKThreesBootstrapConfig(machineConfigs map[string]*bootstrapv1.KThreesConfig, kcp *controlplanev1.KThreesControlPlane) Func {
 	return func(machine *clusterv1.Machine) bool {
+		if machine == nil {
+			return true
+		}
+
+		// Check if KCP and machine KThreesServerConfig matche, if not return false
+		if match := matchServerConfig(kcp, machine); !match {
+			return false
+		}
+
 		return true
 	}
+}
+
+// matchServerConfig checks if KThreesConfig in the ControlPlane object and the machine annotation match.
+func matchServerConfig(kcp *controlplanev1.KThreesControlPlane, machine *clusterv1.Machine) bool {
+	machineServerConfigStr, ok := machine.GetAnnotations()[controlplanev1.KThreesServerConfigurationAnnotation]
+	if !ok {
+		// We don't have enough information to make a decision; don't' trigger a roll out.
+		return true
+	}
+
+	machineServerConfig := &bootstrapv1.KThreesServerConfig{}
+	// KThreesServerConfig annotation is not correct, need to rollout new machine
+	if err := json.Unmarshal([]byte(machineServerConfigStr), &machineServerConfig); err != nil {
+		return false
+	}
+
+	if machineServerConfig == nil {
+		machineServerConfig = &bootstrapv1.KThreesServerConfig{}
+	}
+
+	kcpServerConfig := &kcp.Spec.KThreesConfigSpec.ServerConfig
+	if kcpServerConfig == nil {
+		kcpServerConfig = &bootstrapv1.KThreesServerConfig{}
+	}
+
+	// Compare and return
+	return reflect.DeepEqual(machineServerConfig, kcpServerConfig)
 }
