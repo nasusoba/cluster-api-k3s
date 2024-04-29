@@ -49,7 +49,7 @@ To try out the Vsphere flow, fork the repo and look at `samples/vsphere-capv/set
 ## Compability
 
 ### K3s Versions
-K3s CAPI is able to support k3s with versions newer than v1.21.5+k3s1.
+K3s CAPI is able to support stable k3s release, please check [Release Notes](https://docs.k3s.io/).
 
 ## Roadmap
 
