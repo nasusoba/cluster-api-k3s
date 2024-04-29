@@ -77,6 +77,10 @@ func (w *Workload) reconcileEtcdMember(ctx context.Context, nodeNames []string, 
 loopmembers:
 	for _, member := range members {
 		curNodeName := etcdutil.NodeNameFromMember(member)
+		// If this member is just added, it has a empty name until the etcd pod starts. Ignore it.
+		if curNodeName == "" {
+			continue
+		}
 
 		for _, nodeName := range nodeNames {
 			if curNodeName == nodeName {
@@ -95,7 +99,7 @@ loopmembers:
 	return removedMembers, errs
 }
 
-// RemoveEtcdMemberForMachine removes the etcd member from the target cluster's etcd cluster.
+// RemoveEtcdMemberForMachine removes the etcd member from the target cluster's etcd cluster, and returns true if the member has been removed.
 // Removing the last remaining member of the cluster is not supported.
 func (w *Workload) RemoveEtcdMemberForMachine(ctx context.Context, machine *clusterv1.Machine) (bool, error) {
 	if machine == nil || machine.Status.NodeRef == nil {
