@@ -46,11 +46,6 @@ To try out the Vsphere flow, fork the repo and look at `samples/vsphere-capv/set
 
 ### Known Issues
 
-## Compability
-
-### K3s Versions
-K3s CAPI is able to support stable k3s release, please check [Release Notes](https://docs.k3s.io/).
-
 ## Roadmap
 
 * Support for External Databases
