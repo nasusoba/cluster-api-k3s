@@ -403,6 +403,35 @@ func (r *KThreesControlPlaneReconciler) updateStatus(ctx context.Context, kcp *c
 		conditions.MarkTrue(kcp, controlplanev1.AvailableCondition)
 	}
 
+	// Surface lastRemediation data in status.
+	// LastRemediation is the remediation currently in progress, in any, or the
+	// most recent of the remediation we are keeping track on machines.
+	var lastRemediation *RemediationData
+
+	if v, ok := controlPlane.KCP.Annotations[controlplanev1.RemediationInProgressAnnotation]; ok {
+		remediationData, err := RemediationDataFromAnnotation(v)
+		if err != nil {
+			return err
+		}
+		lastRemediation = remediationData
+	} else {
+		for _, m := range controlPlane.Machines.UnsortedList() {
+			if v, ok := m.Annotations[controlplanev1.RemediationForAnnotation]; ok {
+				remediationData, err := RemediationDataFromAnnotation(v)
+				if err != nil {
+					return err
+				}
+				if lastRemediation == nil || lastRemediation.Timestamp.Time.Before(remediationData.Timestamp.Time) {
+					lastRemediation = remediationData
+				}
+			}
+		}
+	}
+
+	if lastRemediation != nil {
+		controlPlane.KCP.Status.LastRemediation = lastRemediation.ToStatus()
+	}
+
 	return nil
 }
 

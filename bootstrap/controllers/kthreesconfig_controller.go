@@ -501,7 +501,7 @@ func (r *KThreesConfigReconciler) handleClusterNotInitialized(ctx context.Contex
 
 func (r *KThreesConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.KThreesInitLock == nil {
-		r.KThreesInitLock = locking.NewControlPlaneInitMutex(ctrl.Log.WithName("init-locker"), mgr.GetClient())
+		r.KThreesInitLock = locking.NewControlPlaneInitMutex(mgr.GetClient())
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
