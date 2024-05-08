@@ -36,3 +36,16 @@ var _ = Describe("When testing KCP remediation", func() {
 			InfrastructureProvider: ptr.To("docker")}
 	})
 })
+
+var _ = Describe("When testing MachineDeployment remediation", func() {
+	capi_e2e.MachineDeploymentRemediationSpec(ctx, func() capi_e2e.MachineDeploymentRemediationSpecInput {
+		return capi_e2e.MachineDeploymentRemediationSpecInput{
+			E2EConfig:              e2eConfig,
+			ClusterctlConfigPath:   clusterctlConfigPath,
+			BootstrapClusterProxy:  bootstrapClusterProxy,
+			ArtifactFolder:         artifactFolder,
+			SkipCleanup:            skipCleanup,
+			InfrastructureProvider: ptr.To("docker"),
+		}
+	})
+})
