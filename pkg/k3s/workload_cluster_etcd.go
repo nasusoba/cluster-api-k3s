@@ -18,7 +18,6 @@ package k3s
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -167,7 +166,8 @@ func (w *Workload) removeMemberForNode(ctx context.Context, name string) (bool, 
 	}
 
 	if removingNode.Name != name {
-		return false, errors.New(fmt.Sprintf("node %s not found", name))
+		// If the node is already removed, treat it as the etcd member is removed.
+		return true, nil
 	}
 
 	annotations := removingNode.GetAnnotations()
