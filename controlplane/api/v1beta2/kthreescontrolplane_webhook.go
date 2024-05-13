@@ -53,4 +53,16 @@ func (in *KThreesControlPlane) ValidateDelete() (admission.Warnings, error) {
 
 // Default will set default values for the KThreesControlPlane.
 func (in *KThreesControlPlane) Default() {
+	defaultKThreesControlPlaneSpec(&in.Spec, in.Namespace)
+}
+
+func defaultKThreesControlPlaneSpec(s *KThreesControlPlaneSpec, namespace string) {
+	if s.Replicas == nil {
+		replicas := int32(1)
+		s.Replicas = &replicas
+	}
+
+	if s.MachineTemplate.InfrastructureRef.Namespace == "" {
+		s.MachineTemplate.InfrastructureRef.Namespace = namespace
+	}
 }
