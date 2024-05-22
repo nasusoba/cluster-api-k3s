@@ -41,6 +41,11 @@ type KThreesControlPlaneTemplateResourceSpec struct {
 	// +optional
 	KThreesConfigSpec bootstrapv1beta2.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
 
+	// RolloutBefore is a field to indicate a rollout should be performed
+	// if the specified criteria is met.
+	// +optional
+	RolloutBefore *RolloutBefore `json:"rolloutBefore,omitempty"`
+
 	// RolloutAfter is a field to indicate an rollout should be performed
 	// after the specified time even if no changes have been made to the
 	// KThreesControlPlane

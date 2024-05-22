@@ -91,6 +91,7 @@ func (in *KThreesControlPlane) ConvertTo(dstRaw ctrlconversion.Hub) error {
 	dst.Spec.KThreesConfigSpec.ServerConfig.DisableCloudController = restored.Spec.KThreesConfigSpec.ServerConfig.DisableCloudController
 	dst.Spec.MachineTemplate.NodeVolumeDetachTimeout = restored.Spec.MachineTemplate.NodeVolumeDetachTimeout
 	dst.Spec.MachineTemplate.NodeDeletionTimeout = restored.Spec.MachineTemplate.NodeDeletionTimeout
+	dst.Spec.RolloutBefore = restored.Spec.RolloutBefore
 	return nil
 }
 

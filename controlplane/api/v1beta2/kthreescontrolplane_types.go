@@ -71,6 +71,11 @@ type KThreesControlPlaneSpec struct {
 	// +optional
 	KThreesConfigSpec bootstrapv1beta2.KThreesConfigSpec `json:"kthreesConfigSpec,omitempty"`
 
+	// RolloutBefore is a field to indicate a rollout should be performed
+	// if the specified criteria is met.
+	// +optional
+	RolloutBefore *RolloutBefore `json:"rolloutBefore,omitempty"`
+
 	// RolloutAfter is a field to indicate a rollout should be performed
 	// after the specified time even if no changes have been made to the
 	// KThreesControlPlane
@@ -110,6 +115,14 @@ type KThreesControlPlaneMachineTemplate struct {
 	// If no value is provided, the default value for this property of the Machine resource will be used.
 	// +optional
 	NodeDeletionTimeout *metav1.Duration `json:"nodeDeletionTimeout,omitempty"`
+}
+
+// RolloutBefore describes when a rollout should be performed on the KCP machines.
+type RolloutBefore struct {
+	// CertificatesExpiryDays indicates a rollout needs to be performed if the
+	// certificates of the machine will expire within the specified days.
+	// +optional
+	CertificatesExpiryDays *int32 `json:"certificatesExpiryDays,omitempty"`
 }
 
 // RemediationStrategy allows to define how control plane machine remediation happens.
