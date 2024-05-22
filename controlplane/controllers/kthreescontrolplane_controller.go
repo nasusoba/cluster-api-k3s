@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
@@ -580,6 +581,13 @@ func (r *KThreesControlPlaneReconciler) reconcile(ctx context.Context, cluster *
 	}
 	**/
 
+	// Reconcile certificate expiry for Machines that don't have the expiry annotation on KThreesConfig yet.
+	// Note: This requires that all control plane machines are working. We moved this to the end of the reconcile
+	// as nothing in the same reconcile depends on it and to ensure it doesn't block anything else,
+	// especially MHC remediation and rollout of changes to recover the control plane.
+	if err := r.reconcileCertificateExpiries(ctx, controlPlane); err != nil {
+		return ctrl.Result{}, err
+	}
 	return reconcile.Result{}, nil
 }
 
@@ -729,6 +737,76 @@ func (r *KThreesControlPlaneReconciler) reconcileEtcdMembers(ctx context.Context
 
 	if len(removedMembers) > 0 {
 		log.Info("Etcd members without nodes removed from the cluster", "members", removedMembers)
+	}
+
+	return nil
+}
+
+func (r *KThreesControlPlaneReconciler) reconcileCertificateExpiries(ctx context.Context, controlPlane *k3s.ControlPlane) error {
+	log := ctrl.LoggerFrom(ctx)
+
+	// Return if there are no KCP-owned control-plane machines.
+	if controlPlane.Machines.Len() == 0 {
+		return nil
+	}
+
+	// Return if KCP is not yet initialized (no API server to contact for checking certificate expiration).
+	if !controlPlane.KCP.Status.Initialized {
+		return nil
+	}
+
+	// Ignore machines which are being deleted.
+	machines := controlPlane.Machines.Filter(collections.Not(collections.HasDeletionTimestamp))
+
+	workloadCluster, err := r.managementCluster.GetWorkloadCluster(ctx, util.ObjectKey(controlPlane.Cluster))
+	if err != nil {
+		return errors.Wrap(err, "failed to reconcile certificate expiries: cannot get remote client to workload cluster")
+	}
+
+	for _, m := range machines {
+		log := log.WithValues("Machine", klog.KObj(m))
+
+		kthreesConfig, ok := controlPlane.GetKThreesConfig(m.Name)
+		if !ok {
+			// Skip if the Machine doesn't have a KThreesConfig.
+			continue
+		}
+
+		annotations := kthreesConfig.GetAnnotations()
+		if _, ok := annotations[clusterv1.MachineCertificatesExpiryDateAnnotation]; ok {
+			// Skip if annotation is already set.
+			continue
+		}
+
+		if m.Status.NodeRef == nil {
+			// Skip if the Machine is still provisioning.
+			continue
+		}
+		nodeName := m.Status.NodeRef.Name
+		log = log.WithValues("Node", klog.KRef("", nodeName))
+
+		log.V(3).Info("Reconciling certificate expiry")
+		certificateExpiry, err := workloadCluster.GetAPIServerCertificateExpiry(ctx, kthreesConfig, nodeName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to reconcile certificate expiry for Machine/%s", m.Name)
+		}
+		expiry := certificateExpiry.Format(time.RFC3339)
+
+		log.V(2).Info(fmt.Sprintf("Setting certificate expiry to %s", expiry))
+		patchHelper, err := patch.NewHelper(kthreesConfig, r.Client)
+		if err != nil {
+			return errors.Wrapf(err, "failed to reconcile certificate expiry for Machine/%s", m.Name)
+		}
+
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		annotations[clusterv1.MachineCertificatesExpiryDateAnnotation] = expiry
+		kthreesConfig.SetAnnotations(annotations)
+
+		if err := patchHelper.Patch(ctx, kthreesConfig); err != nil {
+			return errors.Wrapf(err, "failed to reconcile certificate expiry for Machine/%s", m.Name)
+		}
 	}
 
 	return nil

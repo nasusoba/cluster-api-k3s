@@ -277,6 +277,12 @@ func (c *ControlPlane) HasDeletingMachine() bool {
 	return len(c.Machines.Filter(collections.HasDeletionTimestamp)) > 0
 }
 
+// GetKThreesConfig returns the KThreesConfig of a given machine.
+func (c *ControlPlane) GetKThreesConfig(machineName string) (*bootstrapv1.KThreesConfig, bool) {
+	kthreesConfig, ok := c.kthreesConfigs[machineName]
+	return kthreesConfig, ok
+}
+
 // MachinesNeedingRollout return a list of machines that need to be rolled out.
 func (c *ControlPlane) MachinesNeedingRollout() collections.Machines {
 	// Ignore machines to be deleted.

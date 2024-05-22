@@ -308,3 +308,39 @@ func TestMatchesKThreesBootstrapConfig(t *testing.T) {
 		})
 	})
 }
+
+func TestShouldRolloutBefore(t *testing.T) {
+	t.Run("should return true if the machine has certificate about to expire", func(t *testing.T) {
+		g := NewWithT(t)
+		timeNow := metav1.Now()
+		// cert will expire in 10 days
+		expiredTime := metav1.Time{Time: timeNow.AddDate(0, 0, 10)}
+		rolloutBeofre := &controlplanev1.RolloutBefore{
+			// need rollout if the cert will expire in 11 days
+			CertificatesExpiryDays: proto.Int32(11),
+		}
+		m := &clusterv1.Machine{
+			Status: clusterv1.MachineStatus{
+				CertificatesExpiryDate: &expiredTime,
+			},
+		}
+		g.Expect(ShouldRolloutBefore(&timeNow, rolloutBeofre)(m)).To(BeTrue())
+	})
+
+	t.Run("should return false if the machine certificate is not about to expire", func(t *testing.T) {
+		g := NewWithT(t)
+		timeNow := metav1.Now()
+		// cert will expired in 10 days
+		expiredTime := metav1.Time{Time: timeNow.AddDate(0, 0, 10)}
+		rolloutBeofre := &controlplanev1.RolloutBefore{
+			// need rollout if the cert will expire in 9 days
+			CertificatesExpiryDays: proto.Int32(9),
+		}
+		m := &clusterv1.Machine{
+			Status: clusterv1.MachineStatus{
+				CertificatesExpiryDate: &expiredTime,
+			},
+		}
+		g.Expect(ShouldRolloutBefore(&timeNow, rolloutBeofre)(m)).To(BeFalse())
+	})
+}
