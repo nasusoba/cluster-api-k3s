@@ -92,7 +92,7 @@ KUSTOMIZE := $(TOOLS_BIN_DIR)/$(KUSTOMIZE_BIN)-$(KUSTOMIZE_VER)
 # Ginkgo
 TEST_DIR := $(shell pwd)/test
 ARTIFACTS ?= $(shell pwd)/_artifacts
-GINKGO_FOCUS ?=
+GINKGO_FOCUS ?= 
 GINKGO_SKIP ?=
 GINKGO_NODES ?= 1 # GINKGO_NODES is the number of parallel nodes to run 
                   # when running the e2e tests, 1 means no parallelism
@@ -233,7 +233,7 @@ generate-e2e-templates: $(KUSTOMIZE)
 	$(KUSTOMIZE) build $(DOCKER_TEMPLATES)/cluster-template-v1beta1 --load-restrictor LoadRestrictionsNone > $(DOCKER_TEMPLATES)/cluster-template-v1beta1.yaml
 	$(KUSTOMIZE) build $(DOCKER_TEMPLATES)/cluster-template-kcp-remediation --load-restrictor LoadRestrictionsNone > $(DOCKER_TEMPLATES)/cluster-template-kcp-remediation.yaml
 	$(KUSTOMIZE) build $(DOCKER_TEMPLATES)/cluster-template-md-remediation --load-restrictor LoadRestrictionsNone > $(DOCKER_TEMPLATES)/cluster-template-md-remediation.yaml
-
+	$(KUSTOMIZE) build $(DOCKER_TEMPLATES)/cluster-template-topology --load-restrictor LoadRestrictionsNone > $(DOCKER_TEMPLATES)/cluster-template-topology.yaml
 
 .PHONY: test-e2e
 test-e2e: generate-e2e-templates $(GINKGO) $(KUSTOMIZE) ## Run the end-to-end tests
