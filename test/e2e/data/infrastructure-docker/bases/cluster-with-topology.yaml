@@ -27,13 +27,15 @@ spec:
         nodeVolumeDetachTimeout: "5m"
         minReadySeconds: 5
         replicas: ${WORKER_MACHINE_COUNT}
-      machinePools:
-      - class: k3s-default-worker
-        name: ${CLUSTER_NAME}-mp-0
-        nodeDeletionTimeout: "30s"
-        nodeVolumeDetachTimeout: "5m"
-        minReadySeconds: 5
-        replicas: ${WORKER_MACHINE_COUNT}
+
+      # TODO: include machinePools when the feature is ready
+      # machinePools:
+      # - class: k3s-default-worker
+      #   name: ${CLUSTER_NAME}-mp-0
+      #   nodeDeletionTimeout: "30s"
+      #   nodeVolumeDetachTimeout: "5m"
+      #   minReadySeconds: 5
+      #   replicas: ${WORKER_MACHINE_COUNT}
     variables:
     - name: kindImageVersion
       value: ${KIND_IMAGE_VERSION}
