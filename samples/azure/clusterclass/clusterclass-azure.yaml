@@ -1,0 +1,133 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: k3s
+spec:
+  controlPlane:
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+      kind: KThreesControlPlaneTemplate
+      name: k3s-control-plane
+    machineInfrastructure:
+      ref:
+        kind: AzureMachineTemplate
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        name: k3s-control-plane
+    machineHealthCheck:
+      maxUnhealthy: 100%
+      unhealthyConditions:
+        - type: k3s.remediation.condition
+          status: "False"
+          timeout: 20s
+  infrastructure:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: AzureClusterTemplate
+      name: k3s-cluster
+  workers:
+    machineDeployments:
+      - class: k3s-default-worker
+        template:
+          bootstrap:
+            ref:
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+              kind: KThreesConfigTemplate
+              name: k3s-default-worker-bootstrap
+          infrastructure:
+            ref:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+              kind: AzureMachineTemplate
+              name: k3s-default-worker-machinetemplate
+        machineHealthCheck:
+            maxUnhealthy: 100%
+            # We are intentionally not setting the 'unhealthyConditions' here to test that the field is optional.
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureClusterTemplate
+metadata:
+  name: k3s-cluster
+spec:
+  template:
+    spec:
+      location: eastus
+      networkSpec:
+        vnet:
+          name: ${CLUSTER_NAME}-vnet
+      resourceGroup: ${CLUSTER_NAME}
+      subscriptionID: ${AZURE_SUBSCRIPTION_ID}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KThreesControlPlaneTemplate
+metadata:
+  name: k3s-control-plane
+spec:
+  template:
+    spec:
+      kthreesConfigSpec:
+        files:
+        - contentFrom:
+            secret:
+              key: control-plane-azure.json
+              name: ${CLUSTER_NAME}-control-plane-azure-json
+          owner: root:root
+          path: /etc/kubernetes/azure.json
+          permissions: "0644"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: default
+spec:
+  template:
+    spec:
+      osDisk:
+        diskSizeGB: 128
+        managedDisk:
+          storageAccountType: Premium_LRS
+        osType: Linux
+      sshPublicKey: ""
+      vmSize: Standard_D2s_v3
+      image:
+        marketplace:
+          publisher: Canonical
+          sku: 18.04-LTS
+          offer: UbuntuServer
+          version: latest
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KThreesConfigTemplate
+metadata:
+  name: k3s-default-worker-bootstrap
+spec:
+  template:
+    spec:
+      files:
+      - contentFrom:
+          secret:
+            key: worker-node-azure.json
+            name: ${CLUSTER_NAME}-md-0-azure-json
+        owner: root:root
+        path: /etc/kubernetes/azure.json
+        permissions: "0644"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AzureMachineTemplate
+metadata:
+  name: k3s-default-worker-machinetemplate
+spec:
+  template:
+    spec:
+      osDisk:
+        diskSizeGB: 128
+        managedDisk:
+          storageAccountType: Premium_LRS
+        osType: Linux
+      sshPublicKey: ""
+      vmSize: Standard_D2s_v3
+      image:
+        marketplace:
+          publisher: Canonical
+          sku: 18.04-LTS
+          offer: UbuntuServer
+          version: latest
