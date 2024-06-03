@@ -5,6 +5,9 @@ export AZURE_TENANT_ID="<Tenant>"
 export AZURE_CLIENT_ID="<AppId>"
 export AZURE_CLIENT_SECRET="<Password>"
 
+# Set registry
+export REGISTRY="ghcr.io/k3s-io/cluster-api-k3s"
+
 # Base64 encode the variables
 export AZURE_SUBSCRIPTION_ID_B64="$(echo -n "$AZURE_SUBSCRIPTION_ID" | base64 | tr -d '\n')"
 export AZURE_TENANT_ID_B64="$(echo -n "$AZURE_TENANT_ID" | base64 | tr -d '\n')"
@@ -26,5 +29,8 @@ export CLUSTER_TOPOLOGY=true
 # Finally, initialize the management cluster
 clusterctl init --infrastructure azure
 
-
 # Install k3s
+make install-controlplane
+make install-bootstrap
+make REGISTRY=${REGISTRY} deploy-controlplane
+make REGISTRY=${REGISTRY} deploy-bootstrap
