@@ -12,7 +12,7 @@ spec:
       ref:
         kind: AzureMachineTemplate
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-        name: k3s-control-plane
+        name: ${CLUSTER_NAME}-control-plane
     machineHealthCheck:
       maxUnhealthy: 100%
       unhealthyConditions:
@@ -38,9 +38,47 @@ spec:
               apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
               kind: AzureMachineTemplate
               name: k3s-default-worker-machinetemplate
-        machineHealthCheck:
-            maxUnhealthy: 100%
-            # We are intentionally not setting the 'unhealthyConditions' here to test that the field is optional.
+  patches:
+    - definitions:
+      - jsonPatches:
+        - op: replace
+          path: /spec/template/spec/kthreesConfigSpec/files
+          valueFrom:
+            template: |
+              - contentFrom:
+                  secret:
+                    key: control-plane-azure.json
+                    name: "{{ .builtin.controlPlane.machineTemplate.infrastructureRef.name }}-azure-json"
+                owner: root:root
+                path: /etc/kubernetes/azure.json
+                permissions: "0644"
+        selector:
+          apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+          kind: KThreesControlPlaneTemplate
+          matchResources:
+            controlPlane: true
+      name: controlPlaneAzureJsonSecretName
+    - definitions:
+      - jsonPatches:
+        - op: replace
+          path: /spec/template/spec/files
+          valueFrom:
+            template: |
+              - contentFrom:
+                  secret:
+                    key: worker-node-azure.json
+                    name: "{{ .builtin.machineDeployment.infrastructureRef.name }}-azure-json"
+                owner: root:root
+                path: /etc/kubernetes/azure.json
+                permissions: "0644"
+        selector:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: KThreesConfigTemplate
+          matchResources:
+            machineDeploymentClass:
+              names:
+              - k3s-default-worker
+      name: workerAzureJsonSecretName
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureClusterTemplate
@@ -53,12 +91,19 @@ spec:
       networkSpec:
         vnet:
           name: ${CLUSTER_NAME}-vnet
-      resourceGroup: ${RESOURCE_GROUP}
       subscriptionID: ${AZURE_SUBSCRIPTION_ID}
       identityRef: 
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: AzureClusterIdentity
         name: "${CLUSTER_IDENTITY_NAME}"
+      networkSpec:
+        subnets:
+        - name: control-plane-subnet
+          role: control-plane
+        - name: node-subnet
+          natGateway:
+            name: node-natgateway
+          role: node
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KThreesControlPlaneTemplate
@@ -72,7 +117,7 @@ spec:
         - contentFrom:
             secret:
               key: control-plane-azure.json
-              name: ${CLUSTER_NAME}-control-plane-azure-json
+              name: replace_me
           owner: root:root
           path: /etc/kubernetes/azure.json
           permissions: "0644"
@@ -110,7 +155,7 @@ spec:
       - contentFrom:
           secret:
             key: worker-node-azure.json
-            name: ${CLUSTER_NAME}-md-0-azure-json
+            name: replace_me
         owner: root:root
         path: /etc/kubernetes/azure.json
         permissions: "0644"

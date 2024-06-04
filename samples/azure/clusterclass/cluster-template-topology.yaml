@@ -17,7 +17,7 @@ spec:
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
     workers:
       machineDeployments:
-      - class: ${CLUSTER_NAME}-worker
+      - class: k3s-default-worker
         name: md-0
         replicas: ${WORKER_MACHINE_COUNT:=2}
 ---
