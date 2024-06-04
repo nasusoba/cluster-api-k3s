@@ -15,6 +15,7 @@ spec:
         name: k3s-control-plane
     machineHealthCheck:
       maxUnhealthy: 100%
+      nodeStartupTimeout: 20m
       unhealthyConditions:
         - type: e2e.remediation.condition
           status: "False"
@@ -38,9 +39,6 @@ spec:
               apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
               kind: DockerMachineTemplate
               name: k3s-default-worker-machinetemplate
-        machineHealthCheck:
-            maxUnhealthy: 100%
-            # We are intentionally not setting the 'unhealthyConditions' here to test that the field is optional.
     machinePools:
     - class: k3s-default-worker
       template:

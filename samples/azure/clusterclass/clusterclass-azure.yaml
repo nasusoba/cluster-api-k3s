@@ -1,13 +1,13 @@
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: ClusterClass
 metadata:
-  name: k3s
+  name: ${CLUSTER_CLASS_NAME}
 spec:
   controlPlane:
     ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta2
       kind: KThreesControlPlaneTemplate
-      name: k3s-control-plane
+      name: ${CLUSTER_NAME}-control-plane
     machineInfrastructure:
       ref:
         kind: AzureMachineTemplate
@@ -16,28 +16,29 @@ spec:
     machineHealthCheck:
       maxUnhealthy: 100%
       unhealthyConditions:
-        - type: k3s.remediation.condition
-          status: "False"
+        # add for demo purpose
+        - type: NeedRemediation
+          status: "True"
           timeout: 20s
   infrastructure:
     ref:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: AzureClusterTemplate
-      name: k3s-cluster
+      name: ${CLUSTER_NAME}-azure-cluster
   workers:
     machineDeployments:
-      - class: k3s-default-worker
+      - class: ${CLUSTER_NAME}-worker
         template:
           bootstrap:
             ref:
               apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
               kind: KThreesConfigTemplate
-              name: k3s-default-worker-bootstrap
+              name: ${CLUSTER_NAME}-worker-bootstrap
           infrastructure:
             ref:
               apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
               kind: AzureMachineTemplate
-              name: k3s-default-worker-machinetemplate
+              name: ${CLUSTER_NAME}-worker-machinetemplate
   patches:
     - definitions:
       - jsonPatches:
@@ -77,20 +78,17 @@ spec:
           matchResources:
             machineDeploymentClass:
               names:
-              - k3s-default-worker
+              - ${CLUSTER_NAME}-worker
       name: workerAzureJsonSecretName
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureClusterTemplate
 metadata:
-  name: k3s-cluster
+  name: ${CLUSTER_NAME}-azure-cluster
 spec:
   template:
     spec:
-      location: eastus
-      networkSpec:
-        vnet:
-          name: ${CLUSTER_NAME}-vnet
+      location: ${AZURE_LOCATION}
       subscriptionID: ${AZURE_SUBSCRIPTION_ID}
       identityRef: 
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -108,7 +106,7 @@ spec:
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KThreesControlPlaneTemplate
 metadata:
-  name: k3s-control-plane
+  name: ${CLUSTER_NAME}-control-plane
 spec:
   template:
     spec:
@@ -130,24 +128,20 @@ metadata:
 spec:
   template:
     spec:
+      dataDisks:
+      - diskSizeGB: 256
+        lun: 0
+        nameSuffix: etcddisk
       osDisk:
         diskSizeGB: 128
-        managedDisk:
-          storageAccountType: Premium_LRS
         osType: Linux
       sshPublicKey: ""
       vmSize: Standard_D2s_v3
-      image:
-        marketplace:
-          publisher: Canonical
-          sku: 18.04-LTS
-          offer: UbuntuServer
-          version: latest
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KThreesConfigTemplate
 metadata:
-  name: k3s-default-worker-bootstrap
+  name: ${CLUSTER_NAME}-worker-bootstrap
 spec:
   template:
     spec:
@@ -163,20 +157,16 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: AzureMachineTemplate
 metadata:
-  name: k3s-default-worker-machinetemplate
+  name: ${CLUSTER_NAME}-worker-machinetemplate
 spec:
   template:
     spec:
+      dataDisks:
+      - diskSizeGB: 256
+        lun: 0
+        nameSuffix: etcddisk
       osDisk:
         diskSizeGB: 128
-        managedDisk:
-          storageAccountType: Premium_LRS
         osType: Linux
       sshPublicKey: ""
       vmSize: Standard_D2s_v3
-      image:
-        marketplace:
-          publisher: Canonical
-          sku: 18.04-LTS
-          offer: UbuntuServer
-          version: latest
