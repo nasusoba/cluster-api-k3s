@@ -1,0 +1,108 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: GCPCluster
+    name: "${CLUSTER_NAME}"
+  controlPlaneRef:
+    kind: KThreesControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    name: "${CLUSTER_NAME}-control-plane"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPCluster
+metadata:
+  name: "${CLUSTER_NAME}"
+spec:
+  project: "${GCP_PROJECT}"
+  region: "${GCP_REGION}"
+  network:
+    name: "${GCP_NETWORK_NAME}"
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KThreesControlPlane
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+  machineTemplate:
+    infrastructureRef:
+      kind: GCPMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      name: "${CLUSTER_NAME}-control-plane"
+  kthreesConfigSpec:
+    serverConfig:
+      # TODO: please check allocate-node-cidrs value, for flannel it might need to be true
+      kubeControllerManagerArgs:
+      - allocate-node-cidrs=false
+      disableCloudController: false
+      cloudProviderName: gce
+    agentConfig:
+      nodeName: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
+  version: "${KUBERNETES_VERSION:=v1.30.2+k3s2}"
+---
+kind: GCPMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+metadata:
+  name: "${CLUSTER_NAME}-control-plane"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_CONTROL_PLANE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  clusterName: "${CLUSTER_NAME}"
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels:
+  template:
+    spec:
+      clusterName: "${CLUSTER_NAME}"
+      version: "${KUBERNETES_VERSION:=v1.30.2+k3s2}"
+      bootstrap:
+        configRef:
+          name: "${CLUSTER_NAME}-md-0"
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: KThreesConfigTemplate
+      infrastructureRef:
+        name: "${CLUSTER_NAME}-md-0"
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: GCPMachineTemplate
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      instanceType: "${GCP_NODE_MACHINE_TYPE}"
+      image: "${IMAGE_ID}"
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KThreesConfigTemplate
+metadata:
+  name: "${CLUSTER_NAME}-md-0"
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: '{{ ds.meta_data.local_hostname.split(".")[0] }}'
+      
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: gce
+            feature-gates: "DisableCloudProviders=false,DisableKubeletCloudCredentialProviders=false"
